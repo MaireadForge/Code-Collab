@@ -112,4 +112,61 @@ const getUserRooms = async (req, res) => {
   }
 };
 
-module.exports = { createRoom, joinRoom, getRoomDetails, getUserRooms };
+const updateRoomCode = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { code } = req.body;
+
+    if (code === undefined) {
+      return res.status(400).json({ message: 'Please provide code' });
+    }
+
+    const room = await Room.findOneAndUpdate(
+      { roomId, isActive: true, participants: req.user.id },
+      { code },
+      { new: true }
+    );
+
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found or access denied' });
+    }
+
+    res.json({ message: 'Code updated successfully', room });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+const updateRoomLanguage = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { language } = req.body;
+
+    if (!language) {
+      return res.status(400).json({ message: 'Please provide language' });
+    }
+
+    const room = await Room.findOneAndUpdate(
+      { roomId, isActive: true, participants: req.user.id },
+      { language },
+      { new: true }
+    );
+
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found or access denied' });
+    }
+
+    res.json({ message: 'Language updated successfully', room });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  createRoom,
+  joinRoom,
+  getRoomDetails,
+  getUserRooms,
+  updateRoomCode,
+  updateRoomLanguage,
+};

@@ -76,6 +76,16 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('language-change', { language });
   });
 
+  socket.on('cursor-change', ({ roomId, userId, name, lineNumber, column }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit('cursor-change', {
+      userId,
+      name,
+      lineNumber,
+      column,
+    });
+  });
+
   socket.on('leave-room', ({ roomId }) => {
     if (!roomId) return;
 
