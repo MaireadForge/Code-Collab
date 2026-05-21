@@ -1,3 +1,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.remote-cursor-0 { border-left: 2px solid #ef4444 !important; margin-left: 2px; }
+.remote-cursor-1 { border-left: 2px solid #22c55e !important; margin-left: 2px; }
+.remote-cursor-2 { border-left: 2px solid #3b82f6 !important; margin-left: 2px; }
+.remote-cursor-3 { border-left: 2px solid #eab308 !important; margin-left: 2px; }
+.remote-cursor-4 { border-left: 2px solid #a855f7 !important; margin-left: 2px; }
+.remote-cursor-5 { border-left: 2px solid #ec4899 !important; margin-left: 2px; }
+.remote-cursor-6 { border-left: 2px solid #14b8a6 !important; margin-left: 2px; }
+.remote-cursor-7 { border-left: 2px solid #f97316 !important; margin-left: 2px; }
