@@ -6,6 +6,8 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const authRoutes = require('./src/routes/authRoutes');
 const roomRoutes = require('./src/routes/roomRoutes');
+const executeRoutes = require('./src/routes/executeRoutes');
+const Room = require('./src/models/Room');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -42,11 +44,12 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/execute', executeRoutes);
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('join-room', ({ roomId, userId, name }) => {
+  socket.on('join-room', async ({ roomId, userId, name }) => {
     if (!roomId) return;
 
     socket.join(roomId);
@@ -64,6 +67,21 @@ io.on('connection', (socket) => {
     socket.currentRoom = roomId;
 
     io.to(roomId).emit('room-users', getRoomUsersList(roomId));
+
+    try {
+      const room = await Room.findOne({ roomId, isActive: true }).select('messages');
+      if (room) {
+        const messages = room.messages.slice(-50).map((m) => ({
+          userId: m.userId,
+          name: m.name,
+          content: m.content,
+          timestamp: m.timestamp,
+        }));
+        socket.emit('chat-history', messages);
+      }
+    } catch (err) {
+      console.error('Failed to fetch chat history:', err.message);
+    }
   });
 
   socket.on('code-change', ({ roomId, code }) => {
@@ -74,6 +92,23 @@ io.on('connection', (socket) => {
   socket.on('language-change', ({ roomId, language }) => {
     if (!roomId) return;
     io.to(roomId).emit('language-change', { language });
+  });
+
+  socket.on('send-message', async ({ roomId, userId, name, content }) => {
+    if (!roomId || !content) return;
+
+    const timestamp = new Date();
+    const message = { userId, name, content, timestamp };
+
+    try {
+      await Room.findOneAndUpdate(
+        { roomId, isActive: true },
+        { $push: { messages: message } }
+      );
+      io.to(roomId).emit('receive-message', message);
+    } catch (err) {
+      console.error('Failed to save message:', err.message);
+    }
   });
 
   socket.on('cursor-change', ({ roomId, userId, name, lineNumber, column }) => {

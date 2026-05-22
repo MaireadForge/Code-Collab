@@ -137,6 +137,28 @@ const updateRoomCode = async (req, res) => {
   }
 };
 
+const getRoomMessages = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+
+    const room = await Room.findOne({
+      roomId,
+      isActive: true,
+      participants: req.user.id,
+    }).select('messages');
+
+    if (!room) {
+      return res.status(404).json({ message: 'Room not found or access denied' });
+    }
+
+    const messages = room.messages.slice(-50);
+
+    res.json({ messages });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 const updateRoomLanguage = async (req, res) => {
   try {
     const { roomId } = req.params;
@@ -167,6 +189,7 @@ module.exports = {
   joinRoom,
   getRoomDetails,
   getUserRooms,
+  getRoomMessages,
   updateRoomCode,
   updateRoomLanguage,
 };

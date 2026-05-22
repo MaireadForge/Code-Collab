@@ -36,6 +36,12 @@ const roomSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  messages: [{
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    name: String,
+    content: String,
+    timestamp: { type: Date, default: Date.now },
+  }],
 });
 
 module.exports = mongoose.model('Room', roomSchema);

@@ -28,6 +28,11 @@ const getUserColorIndex = (userId) => {
   return Math.abs(hash) % CURSOR_COLORS.length;
 };
 
+const formatTime = (timestamp) => {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
 function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -38,9 +43,14 @@ function Room() {
   const [language, setLanguage] = useState('javascript');
   const [connectedUsers, setConnectedUsers] = useState([]);
   const [remoteCursors, setRemoteCursors] = useState({});
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [activeTab, setActiveTab] = useState('participants');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [toast, setToast] = useState('');
+  const [running, setRunning] = useState(false);
+  const [showOutput, setShowOutput] = useState(false);
+  const [output, setOutput] = useState({ stdout: '', stderr: '', code: null });
 
   const socketRef = useRef(null);
   const editorRef = useRef(null);
@@ -48,8 +58,17 @@ function Room() {
   const decorationIdsRef = useRef([]);
   const isLocalChange = useRef(true);
   const saveTimeoutRef = useRef(null);
+  const chatEndRef = useRef(null);
 
   const userId = user?.id || user?._id;
+
+  const scrollChatToBottom = useCallback(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    scrollChatToBottom();
+  }, [messages, scrollChatToBottom]);
 
   const updateCursorDecorations = useCallback(() => {
     const editor = editorRef.current;
@@ -109,40 +128,63 @@ function Room() {
     const socket = io('http://localhost:5000');
     socketRef.current = socket;
 
-    socket.on('connect', () => {
+    const onConnect = () => {
       socket.emit('join-room', {
         roomId,
         userId,
         name: user.name,
       });
-    });
+    };
 
-    socket.on('room-users', (users) => {
+    const onRoomUsers = (users) => {
       setConnectedUsers(users);
-    });
+    };
 
-    socket.on('code-change', ({ code: newCode }) => {
+    const onCodeChange = ({ code: newCode }) => {
       isLocalChange.current = false;
       setCode(newCode);
-    });
+    };
 
-    socket.on('language-change', ({ language: newLanguage }) => {
+    const onLanguageChange = ({ language: newLanguage }) => {
       setLanguage(newLanguage);
-    });
+    };
 
-    socket.on('cursor-change', ({ userId: remoteUserId, name, lineNumber, column }) => {
+    const onCursorChange = ({ userId: remoteUserId, name, lineNumber, column }) => {
       if (String(remoteUserId) === String(userId)) return;
 
       setRemoteCursors((prev) => ({
         ...prev,
         [remoteUserId]: { userId: remoteUserId, name, lineNumber, column },
       }));
-    });
+    };
+
+    const onChatHistory = (history) => {
+      setMessages(history);
+    };
+
+    const onReceiveMessage = (message) => {
+      setMessages((prev) => [...prev, message]);
+    };
+
+    socket.on('connect', onConnect);
+    socket.on('room-users', onRoomUsers);
+    socket.on('code-change', onCodeChange);
+    socket.on('language-change', onLanguageChange);
+    socket.on('cursor-change', onCursorChange);
+    socket.on('chat-history', onChatHistory);
+    socket.on('receive-message', onReceiveMessage);
 
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
+      socket.off('connect', onConnect);
+      socket.off('room-users', onRoomUsers);
+      socket.off('code-change', onCodeChange);
+      socket.off('language-change', onLanguageChange);
+      socket.off('cursor-change', onCursorChange);
+      socket.off('chat-history', onChatHistory);
+      socket.off('receive-message', onReceiveMessage);
       socket.emit('leave-room', { roomId });
       socket.disconnect();
       socketRef.current = null;
@@ -215,9 +257,48 @@ function Room() {
     navigate('/dashboard');
   };
 
-  const handleRunCode = () => {
-    setToast('Code execution coming soon');
-    setTimeout(() => setToast(''), 3000);
+  const handleSendMessage = () => {
+    const content = chatInput.trim();
+    if (!content) return;
+
+    socketRef.current?.emit('send-message', {
+      roomId,
+      userId,
+      name: user.name,
+      content,
+    });
+
+    setChatInput('');
+  };
+
+  const handleChatKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleRunCode = async () => {
+    setRunning(true);
+    setShowOutput(true);
+    setOutput({ stdout: '', stderr: '', code: null });
+
+    try {
+      const { data } = await api.post('/execute', { language, code });
+      setOutput({
+        stdout: data.stdout || '',
+        stderr: data.stderr || '',
+        code: data.code,
+      });
+    } catch (err) {
+      setOutput({
+        stdout: '',
+        stderr: err.response?.data?.message || 'Failed to execute code',
+        code: 1,
+      });
+    } finally {
+      setRunning(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -248,12 +329,6 @@ function Room() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg shadow-lg text-sm text-gray-200">
-          {toast}
-        </div>
-      )}
-
       <header className="h-[60px] bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold text-blue-400">{room?.name || 'Room'}</h1>
@@ -284,60 +359,160 @@ function Room() {
       </header>
 
       <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 60px)' }}>
-        <main className="flex-1 overflow-hidden">
-          <Editor
-            height="calc(100vh - 120px)"
-            theme="vs-dark"
-            language={language}
-            value={code}
-            onChange={handleCodeChange}
-            onMount={handleEditorMount}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              wordWrap: 'on',
-              scrollBeyondLastLine: false,
-            }}
-          />
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className="flex-1 min-h-0">
+            <Editor
+              height="100%"
+              theme="vs-dark"
+              language={language}
+              value={code}
+              onChange={handleCodeChange}
+              onMount={handleEditorMount}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                wordWrap: 'on',
+                scrollBeyondLastLine: false,
+              }}
+            />
+          </div>
+
+          {showOutput && (
+            <div className="h-[200px] shrink-0 bg-gray-800 border-t border-gray-700 flex flex-col">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
+                <span className="text-sm font-medium text-gray-300">Output</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-gray-500">
+                    Exit code: {output.code ?? '—'}
+                  </span>
+                  <button
+                    onClick={() => setShowOutput(false)}
+                    className="text-gray-400 hover:text-white text-sm"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-4 font-mono text-sm">
+                {output.stdout && (
+                  <pre className="text-green-400 whitespace-pre-wrap">{output.stdout}</pre>
+                )}
+                {output.stderr && (
+                  <pre className="text-red-400 whitespace-pre-wrap">{output.stderr}</pre>
+                )}
+                {!output.stdout && !output.stderr && (
+                  <p className="text-gray-500">No output</p>
+                )}
+              </div>
+            </div>
+          )}
         </main>
 
         <aside className="w-[250px] bg-gray-800 border-l border-gray-700 flex flex-col shrink-0">
-          <div className="p-4 flex-1 overflow-y-auto">
-            <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wide mb-4">
-              Participants
-            </h2>
-            {connectedUsers.length === 0 ? (
-              <p className="text-gray-500 text-sm">No users connected</p>
-            ) : (
-              <ul className="space-y-2">
-                {connectedUsers.map((u) => {
-                  const colorIndex = getUserColorIndex(u.userId);
-                  const isYou = String(u.userId) === String(userId);
-                  return (
-                    <li key={u.socketId} className="flex items-center gap-2 text-sm">
-                      <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: CURSOR_COLORS[colorIndex] }}
-                      />
-                      <span className="text-gray-200 truncate">
-                        {u.name}
-                        {isYou && <span className="text-gray-500"> (you)</span>}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-
-          <div className="p-4 border-t border-gray-700">
+          <div className="flex border-b border-gray-700">
             <button
-              onClick={handleRunCode}
-              className="w-full py-2.5 bg-green-600 hover:bg-green-700 rounded-lg text-sm font-medium transition-colors"
+              onClick={() => setActiveTab('participants')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === 'participants'
+                  ? 'text-white border-b-2 border-blue-500'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
             >
-              Run Code
+              Participants
+            </button>
+            <button
+              onClick={() => setActiveTab('chat')}
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+                activeTab === 'chat'
+                  ? 'text-white border-b-2 border-blue-500'
+                  : 'text-gray-400 hover:text-gray-200'
+              }`}
+            >
+              Chat
             </button>
           </div>
+
+          {activeTab === 'participants' ? (
+            <>
+              <div className="p-4 flex-1 overflow-y-auto">
+                {connectedUsers.length === 0 ? (
+                  <p className="text-gray-500 text-sm">No users connected</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {connectedUsers.map((u) => {
+                      const colorIndex = getUserColorIndex(u.userId);
+                      const isYou = String(u.userId) === String(userId);
+                      return (
+                        <li key={u.socketId} className="flex items-center gap-2 text-sm">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: CURSOR_COLORS[colorIndex] }}
+                          />
+                          <span className="text-gray-200 truncate">
+                            {u.name}
+                            {isYou && <span className="text-gray-500"> (you)</span>}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-gray-700">
+                <button
+                  onClick={handleRunCode}
+                  disabled={running}
+                  className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                >
+                  {running ? 'Running...' : 'Run Code'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col flex-1 min-h-0">
+              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                {messages.length === 0 ? (
+                  <p className="text-gray-500 text-sm text-center">No messages yet</p>
+                ) : (
+                  messages.map((msg, index) => {
+                    const color = CURSOR_COLORS[getUserColorIndex(msg.userId)];
+                    return (
+                      <div key={`${msg.timestamp}-${index}`} className="text-sm">
+                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                          <span className="font-medium truncate" style={{ color }}>
+                            {msg.name}
+                          </span>
+                          <span className="text-gray-500 text-xs shrink-0">
+                            {formatTime(msg.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-gray-300 break-words">{msg.content}</p>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              <div className="p-3 border-t border-gray-700 flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={handleChatKeyDown}
+                  placeholder="Type a message..."
+                  className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          )}
         </aside>
       </div>
     </div>

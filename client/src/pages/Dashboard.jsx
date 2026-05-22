@@ -16,6 +16,7 @@ function Dashboard() {
   const [roomName, setRoomName] = useState('');
   const [language, setLanguage] = useState('javascript');
   const [creating, setCreating] = useState(false);
+  const [joinRoomId, setJoinRoomId] = useState('');
 
   useEffect(() => {
     if (!token) return;
@@ -94,13 +95,33 @@ function Dashboard() {
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-gray-200">Your Rooms</h2>
           <button
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
           >
             + Create Room
+          </button>
+        </div>
+
+        <div className="flex items-center gap-3 mb-8">
+          <input
+            type="text"
+            value={joinRoomId}
+            onChange={(e) => setJoinRoomId(e.target.value)}
+            placeholder="Enter Room ID"
+            className="flex-1 max-w-xs px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={() => {
+              if (joinRoomId.trim()) {
+                navigate(`/room/${joinRoomId.trim()}`);
+              }
+            }}
+            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors"
+          >
+            Join
           </button>
         </div>
 

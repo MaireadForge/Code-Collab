@@ -5,6 +5,7 @@ const {
   joinRoom,
   getRoomDetails,
   getUserRooms,
+  getRoomMessages,
   updateRoomCode,
   updateRoomLanguage,
 } = require('../controllers/roomController');
@@ -18,6 +19,7 @@ router.post('/join', joinRoom);
 router.get('/', getUserRooms);
 router.patch('/:roomId/code', updateRoomCode);
 router.patch('/:roomId/language', updateRoomLanguage);
+router.get('/:roomId/messages', getRoomMessages);
 router.get('/:roomId', getRoomDetails);
 
 module.exports = router;
