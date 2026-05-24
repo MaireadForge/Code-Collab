@@ -7,6 +7,7 @@ const { Server } = require('socket.io');
 const authRoutes = require('./src/routes/authRoutes');
 const roomRoutes = require('./src/routes/roomRoutes');
 const executeRoutes = require('./src/routes/executeRoutes');
+const aiRoutes = require('./src/routes/aiRoutes');
 const Room = require('./src/models/Room');
 
 const app = express();
@@ -45,6 +46,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
+app.use('/api/ai', aiRoutes);
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
