@@ -33,6 +33,14 @@ const formatTime = (timestamp) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+const AI_ACTIONS = [
+  { id: 'explain', label: 'Explain', emoji: '💡' },
+  { id: 'debug', label: 'Debug', emoji: '🐛' },
+  { id: 'optimize', label: 'Optimize', emoji: '⚡' },
+  { id: 'complexity', label: 'Complexity', emoji: '📊' },
+  { id: 'testcases', label: 'Test Cases', emoji: '🧪' },
+];
+
 function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -51,6 +59,10 @@ function Room() {
   const [running, setRunning] = useState(false);
   const [showOutput, setShowOutput] = useState(false);
   const [output, setOutput] = useState({ stdout: '', stderr: '', code: null });
+  const [showAIPanel, setShowAIPanel] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState('');
+  const [aiAction, setAiAction] = useState('');
 
   const socketRef = useRef(null);
   const editorRef = useRef(null);
@@ -278,6 +290,41 @@ function Room() {
     }
   };
 
+  const getSelectedCode = () => {
+    const editor = editorRef.current;
+    if (!editor) return code;
+
+    const selection = editor.getSelection();
+    if (!selection || selection.isEmpty()) return code;
+
+    const model = editor.getModel();
+    if (!model) return code;
+
+    const selectedText = model.getValueInRange(selection);
+    return selectedText.trim() ? selectedText : code;
+  };
+
+  const handleAIAction = async (action) => {
+    setAiAction(action);
+    setShowAIPanel(true);
+    setAiLoading(true);
+    setAiResult('');
+
+    try {
+      const codeToAnalyze = getSelectedCode();
+      const { data } = await api.post('/ai/analyze', {
+        code: codeToAnalyze,
+        language,
+        action,
+      });
+      setAiResult(data.result);
+    } catch (err) {
+      setAiResult(err.response?.data?.message || 'AI analysis failed. Please try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleRunCode = async () => {
     setRunning(true);
     setShowOutput(true);
@@ -328,8 +375,8 @@ function Room() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      <header className="h-[60px] bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0">
+    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
+      <header className="h-[60px] shrink-0 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
         <div className="flex items-center gap-4">
           <h1 className="text-lg font-bold text-blue-400">{room?.name || 'Room'}</h1>
           <select
@@ -343,6 +390,16 @@ function Room() {
               </option>
             ))}
           </select>
+          <button
+            onClick={() => setShowAIPanel((prev) => !prev)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              showAIPanel
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            🤖 AI Assistant
+          </button>
         </div>
 
         <div className="flex items-center gap-4">
@@ -358,9 +415,59 @@ function Room() {
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 60px)' }}>
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 min-h-0">
+      <div
+        className="flex flex-row overflow-hidden min-h-0"
+        style={{ height: 'calc(100vh - 60px)' }}
+      >
+        {showAIPanel && (
+          <aside className="w-[380px] shrink-0 h-full overflow-hidden flex flex-col min-h-0 bg-gray-900 border-r border-gray-700">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 shrink-0">
+              <h2 className="text-sm font-semibold text-white">AI Assistant</h2>
+              <button
+                onClick={() => setShowAIPanel(false)}
+                className="text-gray-400 hover:text-white text-lg leading-none"
+                aria-label="Close AI panel"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2 p-3 border-b border-gray-700 shrink-0">
+              {AI_ACTIONS.map(({ id, label, emoji }) => (
+                <button
+                  key={id}
+                  onClick={() => handleAIAction(id)}
+                  disabled={aiLoading}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                    aiAction === id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {emoji} {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto p-4">
+              {aiLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-full gap-3 text-gray-400">
+                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-sm">Analyzing your code...</p>
+                </div>
+              ) : aiResult ? (
+                <pre className="text-sm text-gray-200 whitespace-pre-wrap">{aiResult}</pre>
+              ) : (
+                <p className="text-sm text-gray-500 text-center">
+                  Select code or use full file, then click an action above
+                </p>
+              )}
+            </div>
+          </aside>
+        )}
+
+        <main className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
             <Editor
               height="100%"
               theme="vs-dark"
@@ -378,7 +485,7 @@ function Room() {
           </div>
 
           {showOutput && (
-            <div className="h-[200px] shrink-0 bg-gray-800 border-t border-gray-700 flex flex-col">
+            <div className="h-[200px] shrink-0 min-h-0 bg-gray-800 border-t border-gray-700 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
                 <span className="text-sm font-medium text-gray-300">Output</span>
                 <div className="flex items-center gap-3">
@@ -393,7 +500,7 @@ function Room() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-auto p-4 font-mono text-sm">
+              <div className="flex-1 min-h-0 overflow-auto p-4 font-mono text-sm">
                 {output.stdout && (
                   <pre className="text-green-400 whitespace-pre-wrap">{output.stdout}</pre>
                 )}
@@ -408,8 +515,8 @@ function Room() {
           )}
         </main>
 
-        <aside className="w-[250px] bg-gray-800 border-l border-gray-700 flex flex-col shrink-0">
-          <div className="flex border-b border-gray-700">
+        <aside className="w-[250px] shrink-0 h-full min-h-0 overflow-hidden flex flex-col bg-gray-800 border-l border-gray-700">
+          <div className="flex shrink-0 border-b border-gray-700">
             <button
               onClick={() => setActiveTab('participants')}
               className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
@@ -434,7 +541,7 @@ function Room() {
 
           {activeTab === 'participants' ? (
             <>
-              <div className="p-4 flex-1 overflow-y-auto">
+              <div className="flex-1 min-h-0 overflow-y-auto p-4">
                 {connectedUsers.length === 0 ? (
                   <p className="text-gray-500 text-sm">No users connected</p>
                 ) : (
@@ -459,7 +566,7 @@ function Room() {
                 )}
               </div>
 
-              <div className="p-4 border-t border-gray-700">
+              <div className="shrink-0 p-4 border-t border-gray-700">
                 <button
                   onClick={handleRunCode}
                   disabled={running}
@@ -470,8 +577,8 @@ function Room() {
               </div>
             </>
           ) : (
-            <div className="flex flex-col flex-1 min-h-0">
-              <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
                 {messages.length === 0 ? (
                   <p className="text-gray-500 text-sm text-center">No messages yet</p>
                 ) : (
@@ -495,7 +602,7 @@ function Room() {
                 <div ref={chatEndRef} />
               </div>
 
-              <div className="p-3 border-t border-gray-700 flex gap-2">
+              <div className="shrink-0 p-3 border-t border-gray-700 flex gap-2">
                 <input
                   type="text"
                   value={chatInput}
