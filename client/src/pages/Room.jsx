@@ -41,6 +41,12 @@ const AI_ACTIONS = [
   { id: 'testcases', label: 'Test Cases', emoji: '🧪' },
 ];
 
+const EDITOR_THEMES = [
+  { value: 'vs-dark', label: 'Dark' },
+  { value: 'light', label: 'Light' },
+  { value: 'hc-black', label: 'High Contrast' },
+];
+
 function Room() {
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -63,6 +69,9 @@ function Room() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState('');
   const [aiAction, setAiAction] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [editorTheme, setEditorTheme] = useState('vs-dark');
+  const [fontSize, setFontSize] = useState(14);
 
   const socketRef = useRef(null);
   const editorRef = useRef(null);
@@ -325,6 +334,16 @@ function Room() {
     }
   };
 
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
   const handleRunCode = async () => {
     setRunning(true);
     setShowOutput(true);
@@ -376,9 +395,9 @@ function Room() {
 
   return (
     <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      <header className="h-[60px] shrink-0 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4">
-        <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-blue-400">{room?.name || 'Room'}</h1>
+      <header className="h-[60px] shrink-0 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 gap-4">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <h1 className="text-lg font-bold text-blue-400 shrink-0">{room?.name || 'Room'}</h1>
           <select
             value={language}
             onChange={handleLanguageChange}
@@ -390,6 +409,35 @@ function Room() {
               </option>
             ))}
           </select>
+          <select
+            value={editorTheme}
+            onChange={(e) => setEditorTheme(e.target.value)}
+            className="px-3 py-1.5 bg-gray-700 border border-gray-600 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {EDITOR_THEMES.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setFontSize((s) => Math.max(10, s - 1))}
+              className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+              aria-label="Decrease font size"
+            >
+              A-
+            </button>
+            <button
+              type="button"
+              onClick={() => setFontSize((s) => Math.min(24, s + 1))}
+              className="bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-sm"
+              aria-label="Increase font size"
+            >
+              A+
+            </button>
+          </div>
           <button
             onClick={() => setShowAIPanel((prev) => !prev)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -400,10 +448,16 @@ function Room() {
           >
             🤖 AI Assistant
           </button>
+          <button
+            onClick={handleCopyLink}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-gray-700 text-gray-300 hover:bg-gray-600"
+          >
+            {linkCopied ? '✓ Copied!' : '🔗 Copy Link'}
+          </button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-400">
+        <div className="flex items-center gap-4 shrink-0">
+          <span className="text-sm text-gray-400 whitespace-nowrap">
             {connectedUsers.length} user{connectedUsers.length !== 1 ? 's' : ''} online
           </span>
           <button
@@ -470,14 +524,14 @@ function Room() {
           <div className="flex-1 min-h-0 overflow-hidden" style={{ height: '100%' }}>
             <Editor
               height="100%"
-              theme="vs-dark"
+              theme={editorTheme}
               language={language}
               value={code}
               onChange={handleCodeChange}
               onMount={handleEditorMount}
               options={{
                 minimap: { enabled: false },
-                fontSize: 14,
+                fontSize,
                 wordWrap: 'on',
                 scrollBeyondLastLine: false,
               }}

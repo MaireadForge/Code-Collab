@@ -17,6 +17,11 @@ function Dashboard() {
   const [language, setLanguage] = useState('javascript');
   const [creating, setCreating] = useState(false);
   const [joinRoomId, setJoinRoomId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredRooms = rooms.filter((room) =>
+    room.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     if (!token) return;
@@ -131,15 +136,29 @@ function Dashboard() {
           </div>
         )}
 
+        {!roomsLoading && rooms.length > 0 && (
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search rooms..."
+            className="w-full mb-4 px-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )}
+
         {roomsLoading ? (
           <p className="text-gray-400">Loading rooms...</p>
         ) : rooms.length === 0 ? (
           <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
             <p className="text-gray-400">No rooms yet. Create one to get started!</p>
           </div>
+        ) : filteredRooms.length === 0 ? (
+          <div className="bg-gray-800 rounded-xl p-12 text-center border border-gray-700">
+            <p className="text-gray-400">No rooms match your search.</p>
+          </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rooms.map((room) => (
+            {filteredRooms.map((room) => (
               <div
                 key={room.roomId}
                 className="bg-gray-800 rounded-xl p-5 border border-gray-700 hover:border-gray-600 transition-colors"
