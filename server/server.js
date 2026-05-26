@@ -8,6 +8,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const roomRoutes = require('./src/routes/roomRoutes');
 const executeRoutes = require('./src/routes/executeRoutes');
 const aiRoutes = require('./src/routes/aiRoutes');
+const githubRoutes = require('./src/routes/githubRoutes');
 const Room = require('./src/models/Room');
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/execute', executeRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/github', githubRoutes);
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -129,6 +131,17 @@ io.on('connection', (socket) => {
     socket.leave(roomId);
     removeUserFromRoom(socket, roomId);
     socket.currentRoom = null;
+  });
+
+  // GitHub Explorer sync events
+  socket.on('github-file-load', ({ roomId, repoUrl, filePath, content, language }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit('github-file-load', { repoUrl, filePath, content, language });
+  });
+
+  socket.on('github-exit', ({ roomId }) => {
+    if (!roomId) return;
+    socket.to(roomId).emit('github-exit');
   });
 
   socket.on('disconnect', () => {
