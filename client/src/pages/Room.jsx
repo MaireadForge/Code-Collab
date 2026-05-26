@@ -109,11 +109,10 @@ function FileTreeNode({ name, node, selectedPath, onFileClick, depth = 0 }) {
     return (
       <button
         onClick={() => onFileClick(node.path)}
-        className={`w-full text-left flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors truncate ${
-          isSelected
+        className={`w-full text-left flex items-center gap-1.5 px-2 py-0.5 rounded text-xs transition-colors truncate ${isSelected
             ? 'bg-blue-600 text-white'
             : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-        }`}
+          }`}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
         title={node.path}
       >
@@ -350,11 +349,10 @@ function GitHubExplorerPanel({
                 onClick={() => handleGhAiAction(id)}
                 disabled={ghAiLoading || fileLoading}
                 id={`gh-ai-${id}`}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                  ghAiAction === id
+                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${ghAiAction === id
                     ? 'bg-purple-600 text-white'
                     : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
+                  }`}
               >
                 {emoji} {label}
               </button>
@@ -521,7 +519,7 @@ function Room() {
   useEffect(() => {
     if (!token || !userId || loading || error) return;
 
-    const socket = io('http://localhost:5000');
+    const socket = io(import.meta.env.VITE_SOCKET_URL);
     socketRef.current = socket;
 
     const onConnect = () => {
@@ -614,7 +612,7 @@ function Room() {
       socket.disconnect();
       socketRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, token, userId, user?.name, loading, error]);
 
   const saveCodeToBackend = useCallback(
@@ -901,11 +899,10 @@ function Room() {
           <button
             onClick={handleToggleAI}
             id="ai-assistant-btn"
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              leftPanel === 'ai'
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${leftPanel === 'ai'
                 ? 'bg-blue-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
+              }`}
           >
             🤖 AI Assistant
           </button>
@@ -914,11 +911,10 @@ function Room() {
           <button
             onClick={handleToggleGitHub}
             id="github-explorer-btn"
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              leftPanel === 'github'
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${leftPanel === 'github'
                 ? 'bg-green-600 text-white'
                 : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
+              }`}
           >
             🐙 GitHub
           </button>
@@ -969,11 +965,10 @@ function Room() {
                   key={id}
                   onClick={() => handleAIAction(id)}
                   disabled={aiLoading}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                    aiAction === id
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${aiAction === id
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
+                    }`}
                 >
                   {emoji} {label}
                 </button>
@@ -1083,21 +1078,19 @@ function Room() {
           <div className="flex shrink-0 border-b border-gray-700">
             <button
               onClick={() => setActiveTab('participants')}
-              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === 'participants'
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'participants'
                   ? 'text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-gray-200'
-              }`}
+                }`}
             >
               Participants
             </button>
             <button
               onClick={() => setActiveTab('chat')}
-              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
-                activeTab === 'chat'
+              className={`flex-1 py-2.5 text-sm font-medium transition-colors ${activeTab === 'chat'
                   ? 'text-white border-b-2 border-blue-500'
                   : 'text-gray-400 hover:text-gray-200'
-              }`}
+                }`}
             >
               Chat
             </button>
