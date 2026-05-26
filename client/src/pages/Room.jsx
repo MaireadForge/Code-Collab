@@ -420,6 +420,8 @@ function Room() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [editorTheme, setEditorTheme] = useState('vs-dark');
   const [fontSize, setFontSize] = useState(14);
+  const [stdin, setStdin] = useState('');
+  const [showStdin, setShowStdin] = useState(false);
 
   // GitHub Explorer state
   const [githubMode, setGithubMode] = useState(false); // is editor in GitHub view-only mode?
@@ -753,7 +755,7 @@ function Room() {
     setOutput({ stdout: '', stderr: '', code: null });
 
     try {
-      const { data } = await api.post('/execute', { language, code });
+      const { data } = await api.post('/execute', { language, code, stdin });
       setOutput({
         stdout: data.stdout || '',
         stderr: data.stderr || '',
@@ -1042,6 +1044,29 @@ function Room() {
             />
           </div>
 
+          {/* Stdin panel — between editor and output */}
+          {showStdin && (
+            <div className="h-[120px] shrink-0 bg-gray-800 border-t border-gray-700 flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-700 shrink-0">
+                <span className="text-xs font-medium text-gray-300">stdin / Input</span>
+                <button
+                  onClick={() => setShowStdin(false)}
+                  className="text-gray-400 hover:text-white text-sm leading-none"
+                  aria-label="Close stdin panel"
+                >
+                  ✕
+                </button>
+              </div>
+              <textarea
+                value={stdin}
+                onChange={(e) => setStdin(e.target.value)}
+                placeholder="Enter program input here (one value per line)..."
+                className="flex-1 w-full bg-gray-900 text-white text-sm font-mono resize-none outline-none border-0 p-2"
+                spellCheck={false}
+              />
+            </div>
+          )}
+
           {showOutput && (
             <div className="h-[200px] shrink-0 min-h-0 bg-gray-800 border-t border-gray-700 flex flex-col overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700">
@@ -1124,14 +1149,29 @@ function Room() {
               </div>
 
               <div className="shrink-0 p-4 border-t border-gray-700">
-                <button
-                  onClick={handleRunCode}
-                  disabled={running || githubMode}
-                  className="w-full py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
-                  title={githubMode ? 'Exit GitHub mode to run code' : ''}
-                >
-                  {running ? 'Running...' : 'Run Code'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowStdin((s) => !s)}
+                    className="flex-1 py-2.5 bg-gray-600 hover:bg-gray-500 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5"
+                    id="toggle-stdin-btn"
+                  >
+                    + Input
+                    {stdin.trim() && (
+                      <span className="px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full leading-none">
+                        stdin
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleRunCode}
+                    disabled={running || githubMode}
+                    className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-green-800 disabled:cursor-not-allowed rounded-lg text-sm font-medium transition-colors"
+                    title={githubMode ? 'Exit GitHub mode to run code' : ''}
+                    id="run-code-btn"
+                  >
+                    {running ? 'Running...' : 'Run Code'}
+                  </button>
+                </div>
               </div>
             </>
           ) : (
