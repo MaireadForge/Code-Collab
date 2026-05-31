@@ -1,20 +1,23 @@
-# CodeCollab — Real-Time Collaborative Coding Platform
+# CodeCollab — AI-Powered Real-Time Collaborative Coding Platform
 
-A full-stack real-time collaborative coding platform where multiple users can join rooms, write code together simultaneously, chat, and see each other's cursors live.
+A full-stack real-time collaborative coding platform where multiple users can join rooms, write code together simultaneously, explore GitHub repositories, get AI-powered code analysis, chat, and see each other's cursors live.
 
 ## 🚀 Live Demo
 [https://code-collab-swart-sigma.vercel.app/](https://code-collab-swart-sigma.vercel.app/)
-
 
 ## ✨ Features
 
 - **Real-Time Code Collaboration** — Multiple users editing code simultaneously with live synchronization
 - **Live Cursor Tracking** — See other users' cursors in real time with unique color indicators
-- **Room System** — Create and join coding rooms via unique room codes
+- **Room System** — Create and join coding rooms via unique room codes or invite links
 - **Multi-Language Support** — JavaScript, Python, C++, and Java with syntax highlighting
-- **Live Chat** — Real-time chat alongside the editor with message history
+- **Code Execution** — Run JavaScript natively and Python/Java/C++ via AI simulation with custom stdin support
+- **AI Coding Assistant** — Explain, debug, optimize, analyze complexity, and generate test cases using Groq LLM
+- **GitHub Codebase Explorer** — Import any public GitHub repository, browse file tree collaboratively, and analyze files with AI
+- **Live Chat** — Real-time chat alongside the editor with message history for late joiners
 - **User Presence** — See who's currently in the room with colored indicators
 - **Persistent State** — Code and language settings saved to database, late joiners see current state
+- **Editor Customization** — Multiple themes (Dark, Light, High Contrast) and adjustable font size
 - **JWT Authentication** — Secure register/login with token-based auth
 - **Responsive UI** — Clean dark-themed interface built with Tailwind CSS
 
@@ -35,112 +38,13 @@ A full-stack real-time collaborative coding platform where multiple users can jo
 - MongoDB Atlas (Mongoose)
 - JWT (jsonwebtoken)
 - bcryptjs
+- Groq SDK (llama-3.3-70b-versatile)
+- GitHub REST API
 
 ### DevOps
-- Docker
 - GitHub Actions (CI/CD)
 - Render (Backend Deployment)
 - Vercel (Frontend Deployment)
-
-## 📁 Project Structure
-
-```
-Code_Collab/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── context/        # Auth context
-│   │   ├── pages/          # Login, Register, Dashboard, Room
-│   │   └── utils/          # Axios instance
-│   └── vite.config.js
-├── server/                 # Node.js backend
-│   ├── src/
-│   │   ├── controllers/    # Auth, Room, Execute logic
-│   │   ├── middleware/      # JWT auth middleware
-│   │   ├── models/         # User, Room schemas
-│   │   └── routes/         # API routes
-│   └── server.js
-└── README.md
-```
-
-## ⚙️ Getting Started
-
-### Prerequisites
-- Node.js v18+
-- MongoDB Atlas account
-- npm or yarn
-
-### Installation
-
-1. Clone the repository
-```bash
-git clone https://github.com/MaireadForge/codecollab.git
-cd codecollab
-```
-
-2. Install backend dependencies
-```bash
-cd server
-npm install
-```
-
-3. Set up backend environment variables
-Create a `.env` file in the `/server` folder:
-PORT=5000
-MONGO_URI=your_mongodb_atlas_connection_string
-JWT_SECRET=your_jwt_secret_key
-
-4. Install frontend dependencies
-```bash
-cd ../client
-npm install
-```
-
-5. Run the backend
-```bash
-cd server
-npm run dev
-```
-
-6. Run the frontend
-```bash
-cd client
-npm run dev
-```
-
-7. Open http://localhost:5173 in your browser
-
-## 🔌 API Endpoints
-
-### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/auth/register | Register new user |
-| POST | /api/auth/login | Login and get JWT token |
-
-### Rooms
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/rooms/create | Create a new room |
-| POST | /api/rooms/join | Join existing room |
-| GET | /api/rooms | Get user's rooms |
-| GET | /api/rooms/:roomId | Get room details |
-| PATCH | /api/rooms/:roomId/code | Update room code |
-| PATCH | /api/rooms/:roomId/language | Update room language |
-| GET | /api/rooms/:roomId/messages | Get chat history |
-
-## 🔄 Real-Time Socket Events
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| join-room | Client → Server | Join a coding room |
-| room-users | Server → Client | Updated users list |
-| code-change | Bidirectional | Sync code changes |
-| language-change | Bidirectional | Sync language selection |
-| cursor-change | Bidirectional | Sync cursor positions |
-| send-message | Client → Server | Send chat message |
-| receive-message | Server → Client | Receive chat message |
-| chat-history | Server → Client | Load message history |
-| leave-room | Client → Server | Leave a coding room |
 
 ## 🏗️ Architecture Highlights
 
@@ -150,8 +54,12 @@ npm run dev
 - **Late Joiner Sync** — New users receive current code state and chat history on join
 - **In-Memory Presence** — Connected users tracked in server-side Map for O(1) operations
 - **JWT Stateless Auth** — Token verified on every protected request via middleware
+- **GitHub File Tree** — Flat path array converted to nested recursive tree structure
+- **Collaborative GitHub Mode** — File selection syncs across all room participants via Socket.IO
+- **Read-Only Editor** — Monaco Editor switches to read-only when viewing GitHub files
+- **AI Code Analysis** — Groq LLM with role-specific system prompts for different analysis types
+- **Sandboxed JS Execution** — JavaScript runs in Node.js vm module with 5-second timeout
+- **stdin Support** — Pre-defined input model for all languages, similar to competitive programming platforms
 
-
-
-## 📄 License
-MIT
+## 👩‍💻 Author
+Anshita Shrivastava 
